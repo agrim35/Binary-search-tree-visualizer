@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Search Tree Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // BST Node Class
+        class BSTNode {
+            constructor(value) {
+                this.value = value;
+                this.left = null;
+                this.right = null;
+            }
+        }
+
+        // Binary Search Tree Class
+        class BST {
+            constructor() {
+                this.root = null;
+            }
+
+            insert(value) {
+                const newNode = new BSTNode(value);
+                
+                if (this.root === null) {
+                    this.root = newNode;
+                    return true;
+                }
+
+                let current = this.root;
+                while (true) {
+                    if (value === current.value) return false;
+                    
+                    if (value < current.value) {
+                        if (current.left === null) {
+                            current.left = newNode;
+                            return true;
+                        }
+                        current = current.left;
+                    } else {
+                        if (current.right === null) {
+                            current.right = newNode;
+                            return true;
+                        }
+                        current = current.right;
+                    }
+                }
+            }
+
+            search(value) {
+                let current = this.root;
+                const path = [];
+                
+                while (current !== null) {
+                    path.push(current.value);
+                    if (value === current.value) {
+                        return { found: true, path };
+                    }
+                    current = value < current.value ? current.left : current.right;
+                }
+                
+                return { found: false, path };
+            }
+
+            delete(value) {
+                this.root = this.deleteNode(this.root, value);
+            }
+
+            deleteNode(node, value) {
+                if (node === null) return null;
+
+                if (value < node.value) {
+                    node.left = this.deleteNode(node.left, value);
+                    return node;
+                } else if (value > node.value) {
+                    node.right = this.deleteNode(node.right, value);
+                    return node;
+                } else {
+                    if (node.left === null && node.right === null) return null;
+                    if (node.left === null) return node.right;
+                    if (node.right === null) return node.left;
+                    
+                    let minRight = node.right;
+                    while (minRight.left !== null) {
+                        minRight = minRight.left;
+                    }
+                    node.value = minRight.value;
+                    node.right = this.deleteNode(node.right, minRight.value);
+                    return node;
+                }
+            }
+
+            inorder(node = this.root, result = []) {
+                if (node !== null) {
+                    this.inorder(node.left, result);
+                    result.push(node.value);
+                    this.inorder(node.right, result);
+                }
+                return result;
+            }
+
+            preorder(node = this.root, result = []) {
+                if (node !== null) {
+                    result.push(node.value);
+                    this.preorder(node.left, result);
+                    this.preorder(node.right, result);
+                }
+                return result;
+            }
+
+            postorder(node = this.root, result = []) {
+                if (node !== null) {
+                    this.postorder(node.left, result);
+                    this.postorder(node.right, result);
+                    result.push(node.value);
+                }
+                return result;
+            }
+
+            getHeight(node = this.root) {
+                if (node === null) return 0;
+                return 1 + Math.max(this.getHeight(node.left), this.getHeight(node.right));
+            }
+
+            getNodeCount(node = this.root) {
+                if (node === null) return 0;
+                return 1 + this.getNodeCount(node.left) + this.getNodeCount(node.right);
+            }
+        }
+
+        function App() {
+            const [bst] = useState(() => {
+                const tree = new BST();
+                [50, 30, 70, 20, 40, 60, 80].forEach(val => tree.insert(val));
+                return tree;
+            });
+
+            const [inputValue, setInputValue] = useState('');
+            const [searchValue, setSearchValue] = useState('');
+            const [searchResult, setSearchResult] = useState(null);
+            const [message, setMessage] = useState('');
+            const [deleteConfirm, setDeleteConfirm] = useState(null);
+            const [refreshKey, setRefreshKey] = useState(0);
+
+            const showMessage = (msg, type = 'success') => {
+                setMessage({ text: msg, type });
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const handleInsert = () => {
+                const value = parseInt(inputValue);
+                if (isNaN(value)) {
+                    showMessage('Please enter a valid number', 'error');
+                    return;
+                }
+                
+                const success = bst.insert(value);
+                if (success) {
+                    showMessage(`Successfully inserted ${value}`);
+                    setInputValue('');
+                    setRefreshKey(prev => prev + 1);
+                } else {
+                    showMessage(`${value} already exists in tree`, 'error');
+                }
+            };
+
+            const handleSearch = () => {
+                const value = parseInt(searchValue);
+                if (isNaN(value)) {
+                    showMessage('Please enter a valid number', 'error');
+                    return;
+                }
+                
+                const result = bst.search(value);
+                setSearchResult(result);
+                
+                if (result.found) {
+                    showMessage(`Found ${value}! Path: ${result.path.join(' → ')}`);
+                } else {
+                    showMessage(`${value} not found. Path: ${result.path.join(' → ')}`, 'error');
+                }
+            };
+
+            const handleDelete = (value) => {
+                bst.delete(value);
+                showMessage(`Deleted ${value} from tree`);
+                setDeleteConfirm(null);
+                setRefreshKey(prev => prev + 1);
+            };
+
+            const TreeNode = ({ node, x, y, level }) => {
+                if (!node) return null;
+
+                const horizontalSpacing = 180 / Math.pow(2, level);
+                const verticalSpacing = 80;
+
+                const leftX = x - horizontalSpacing;
+                const leftY = y + verticalSpacing;
+                const rightX = x + horizontalSpacing;
+                const rightY = y + verticalSpacing;
+
+                const isInSearchPath = searchResult?.path.includes(node.value);
+                const isSearchTarget = searchResult?.found && searchResult.path[searchResult.path.length - 1] === node.value;
+
+                return (
+                    <>
+                        {node.left && (
+                            <line x1={x} y1={y} x2={leftX} y2={leftY} stroke="#94a3b8" strokeWidth="2" />
+                        )}
+                        {node.right && (
+                            <line x1={x} y1={y} x2={rightX} y2={rightY} stroke="#94a3b8" strokeWidth="2" />
+                        )}
+
+                        <TreeNode node={node.left} x={leftX} y={leftY} level={level + 1} />
+                        <TreeNode node={node.right} x={rightX} y={rightY} level={level + 1} />
+
+                        <circle
+                            cx={x} cy={y} r="25"
+                            fill={isSearchTarget ? '#10b981' : isInSearchPath ? '#3b82f6' : '#6366f1'}
+                            stroke="white" strokeWidth="3"
+                        />
+                        <text x={x} y={y} textAnchor="middle" dy=".3em" fill="white" fontSize="18" fontWeight="bold">
+                            {node.value}
+                        </text>
+                    </>
+                );
+            };
+
+            return (
+                <div className="p-8">
+                    <div className="max-w-6xl mx-auto">
+                        {/* Header */}
+                        <div className="text-center mb-8">
+                            <h1 className="text-5xl font-bold text-gray-800 mb-3">
+                                🌲 Binary Search Tree Visualizer
+                            </h1>
+                            <p className="text-gray-600 text-lg">Interactive BST Operations & Traversals</p>
+                        </div>
+
+                        {/* Message Toast */}
+                        {message && (
+                            <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg fade-in z-50 ${
+                                message.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                            } text-white font-semibold`}>
+                                {message.text}
+                            </div>
+                        )}
+
+                        {/* Controls */}
+                        <div className="grid md:grid-cols-2 gap-4 mb-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">➕ Insert Node</h2>
+                                <div className="flex gap-3">
+                                    <input
+                                        type="number"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleInsert()}
+                                        placeholder="Enter number..."
+                                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none text-lg"
+                                    />
+                                    <button
+                                        onClick={handleInsert}
+                                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold"
+                                    >
+                                        Insert
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">🔍 Search Node</h2>
+                                <div className="flex gap-3">
+                                    <input
+                                        type="number"
+                                        value={searchValue}
+                                        onChange={(e) => setSearchValue(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                        placeholder="Search number..."
+                                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none text-lg"
+                                    />
+                                    <button
+                                        onClick={handleSearch}
+                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+                                    >
+                                        Search
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tree Visualization */}
+                        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Tree Structure</h2>
+                            <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+                                <svg width="100%" height="400" viewBox="0 0 800 400" className="mx-auto">
+                                    {bst.root && <TreeNode node={bst.root} x={400} y={40} level={0} key={refreshKey} />}
+                                </svg>
+                            </div>
+                            {searchResult && (
+                                <div className="mt-4 text-center">
+                                    <p className={`text-lg font-semibold ${searchResult.found ? 'text-green-600' : 'text-red-600'}`}>
+                                        {searchResult.found ? '✓ Found!' : '✗ Not Found'}
+                                    </p>
+                                    <p className="text-gray-600 mt-1">
+                                        Search Path: {searchResult.path.map((val, idx) => (
+                                            <span key={idx}>
+                                                <span className="font-bold text-indigo-600">{val}</span>
+                                                {idx < searchResult.path.length - 1 && ' → '}
+                                            </span>
+                                        ))}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Traversals */}
+                        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Tree Traversals</h2>
+                            <div className="grid md:grid-cols-3 gap-4">
+                                <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                                    <h4 className="font-bold text-green-800 mb-2">Inorder (LRR)</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {bst.inorder().map((val, idx) => (
+                                            <span key={idx} className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                {val}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                                    <h4 className="font-bold text-blue-800 mb-2">Preorder (RLR)</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {bst.preorder().map((val, idx) => (
+                                            <span key={idx} className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                {val}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+                                    <h4 className="font-bold text-purple-800 mb-2">Postorder (LRR)</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {bst.postorder().map((val, idx) => (
+                                            <span key={idx} className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                {val}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Statistics */}
+                        <div className="grid md:grid-cols-3 gap-4 mb-6">
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+                                <h3 className="text-lg font-semibold mb-2">Tree Height</h3>
+                                <p className="text-4xl font-bold">{bst.getHeight()}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+                                <h3 className="text-lg font-semibold mb-2">Total Nodes</h3>
+                                <p className="text-4xl font-bold">{bst.getNodeCount()}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+                                <h3 className="text-lg font-semibold mb-2">Root Value</h3>
+                                <p className="text-4xl font-bold">{bst.root?.value || 'Empty'}</p>
+                            </div>
+                        </div>
+
+                        {/* Delete Section */}
+                        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">🗑️ Delete Nodes</h2>
+                            <div className="flex flex-wrap gap-3">
+                                {bst.inorder().map((value) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => setDeleteConfirm(value)}
+                                        className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition font-semibold"
+                                    >
+                                        Delete {value}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Delete Modal */}
+                        {deleteConfirm !== null && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
+                                    <p className="text-gray-600 mb-6">
+                                        Delete node <strong className="text-red-600">{deleteConfirm}</strong>?
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => handleDelete(deleteConfirm)}
+                                            className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-semibold"
+                                        >
+                                            Delete
+                                        </button>
+                                        <button
+                                            onClick={() => setDeleteConfirm(null)}
+                                            className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-semibold"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Info */}
+                        <div className="bg-indigo-50 border-l-4 border-indigo-600 p-6 rounded-r-lg">
+                            <h3 className="font-bold text-indigo-900 mb-3 text-lg">📚 BST Properties:</h3>
+                            <ul className="text-indigo-800 space-y-2">
+                                <li>• <strong>Left subtree</strong> values less than parent</li>
+                                <li>• <strong>Right subtree</strong> values greater than parent</li>
+                                <li>• <strong>Time Complexity:</strong> O(log n) average case</li>
+                                <li>• <strong>Inorder traversal</strong> gives sorted sequence</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
